@@ -134,13 +134,23 @@
     requestAnimationFrame(tick);
   }
 
-  /* ---------- Scroll-driven: progress, header, lit words, manifesto, gallery, parallax ---------- */
-  var hgal=document.querySelector('.hgal'), track=hgal&&hgal.querySelector('.hgal-track'), hbar=hgal&&hgal.querySelector('.hgal-progress i');
-  function sizeGallery(){
-    if(!hgal)return;
-    if(desktop()){var extra=track.scrollWidth-window.innerWidth+parseFloat(getComputedStyle(track).paddingLeft);hgal.style.height=(window.innerHeight+Math.max(0,extra))+'px'}
-    else{hgal.style.height='';track.style.transform=''}
+  /* ---------- Ecosystem gallery: drag, arrows, progress ---------- */
+  var track=document.querySelector('.hgal-track'), hbar=document.querySelector('.hgal-progress i');
+  if(track){
+    var step=function(){var c=track.querySelector('.hcard');return c?c.getBoundingClientRect().width+18:320};
+    var pv=document.querySelector('.hgal-arrows .prev'), nx=document.querySelector('.hgal-arrows .next');
+    if(pv)pv.addEventListener('click',function(){track.scrollBy({left:-step()*1.5,behavior:reduce?'auto':'smooth'})});
+    if(nx)nx.addEventListener('click',function(){track.scrollBy({left:step()*1.5,behavior:reduce?'auto':'smooth'})});
+    var down=false,sx=0,sl=0,moved=false;
+    track.addEventListener('mousedown',function(e){down=true;moved=false;sx=e.pageX;sl=track.scrollLeft;track.classList.add('drag')});
+    window.addEventListener('mouseup',function(){if(!down)return;down=false;track.classList.remove('drag')});
+    track.addEventListener('mousemove',function(e){if(!down)return;var dx=e.pageX-sx;if(Math.abs(dx)>4)moved=true;track.scrollLeft=sl-dx});
+    track.addEventListener('click',function(e){if(moved){e.preventDefault();e.stopPropagation()}},true);
+    var upd=function(){var m=track.scrollWidth-track.clientWidth;if(hbar)hbar.style.width=(m>0?Math.max(8,track.scrollLeft/m*100):100)+'%'};
+    track.addEventListener('scroll',upd,{passive:true});upd();
   }
+
+  /* ---------- Scroll-driven: progress, header, lit words, manifesto, parallax ---------- */
   var mf=document.querySelectorAll('.mf-lines li');
   var pars=document.querySelectorAll('[data-parallax]');
   var ticking=false;
@@ -148,21 +158,15 @@
     var y=window.scrollY, vh=window.innerHeight;
     if(prog){var h=doc.scrollHeight-vh;prog.style.transform='scaleX('+(h>0?y/h:0)+')'}
     if(header){header.classList.toggle('scrolled',y>40);if(!body.classList.contains('menu-open')){header.classList.toggle('hide',y>lastY&&y>400)}lastY=y}
-    lits.forEach(function(o){var r=o.el.getBoundingClientRect();var p=(vh*.85-r.top)/(r.height+vh*.35);p=Math.max(0,Math.min(1,p));var k=Math.round(p*o.spans.length);o.spans.forEach(function(s,i){s.classList.toggle('lit',i<k)})});
-    mf.forEach(function(li){var r=li.getBoundingClientRect();li.classList.toggle('lit',r.top<vh*.68)});
-    if(hgal&&desktop()){
-      var r=hgal.getBoundingClientRect(), total=hgal.offsetHeight-vh, p=Math.max(0,Math.min(1,-r.top/total));
-      var extra=track.scrollWidth-window.innerWidth+parseFloat(getComputedStyle(track).paddingLeft);
-      track.style.transform='translate3d('+(-p*Math.max(0,extra))+'px,0,0)';
-      if(hbar)hbar.style.width=(p*100)+'%';
-    }
+    lits.forEach(function(o){var r=o.el.getBoundingClientRect();var p=(vh*.9-r.top)/(r.height+vh*.25);p=Math.max(0,Math.min(1,p));var k=Math.round(p*o.spans.length);o.spans.forEach(function(s,i){s.classList.toggle('lit',i<k)})});
+    mf.forEach(function(li){var r=li.getBoundingClientRect();li.classList.toggle('lit',r.top<vh*.75)});
     if(!reduce)pars.forEach(function(el){var r=el.getBoundingClientRect();var s=parseFloat(el.dataset.parallax)||.1;var off=(r.top+r.height/2-vh/2)*s;el.style.transform='translate3d(0,'+(-off).toFixed(1)+'px,0)'});
     ticking=false;
   }
   window.addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(onScroll)}},{passive:true});
-  window.addEventListener('resize',function(){sizeGallery();onScroll()});
-  window.addEventListener('load',function(){sizeGallery();onScroll()});
-  sizeGallery();onScroll();
+  window.addEventListener('resize',onScroll);
+  window.addEventListener('load',onScroll);
+  onScroll();
 
   /* ---------- Contact page ---------- */
   var form=document.querySelector('#enquiry');
